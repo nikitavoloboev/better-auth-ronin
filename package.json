@@ -1,0 +1,20 @@
+{
+  "name": "better-auth-ronin",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch main.ts",
+    "ts": "bun --watch scripts/run.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.1.16"
+  },
+  "peerDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "prettier": {
+    "semi": false
+  },
+  "dependencies": {
+    "better-auth": "^1.1.13"
+  }
+}
