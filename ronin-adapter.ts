@@ -1,14 +1,14 @@
-import { BetterAuthError, generateId } from "better-auth"
-import { getAuthTables } from "better-auth/db"
-
-import type { Adapter, BetterAuthOptions, Where } from "better-auth/types"
+import { BetterAuthError } from "better-auth"
 import type { FieldAttribute } from "better-auth/db"
+import { getAuthTables } from "better-auth/db"
+import type { Adapter, BetterAuthOptions } from "better-auth/types"
+import { get, create } from "ronin"
 
 // https://github.com/better-auth/better-auth/blob/36b490a80b187ae92d632ecf23bd1ee918d3e753/packages/better-auth/src/adapters/utils.ts#L3C8-L20C2
 function withApplyDefault(
   value: unknown,
   field: FieldAttribute,
-  action: "create" | "update"
+  action: "create" | "update",
 ) {
   if (action === "update") return value
 
@@ -27,12 +27,15 @@ function createTransform(options: BetterAuthOptions) {
   return {}
 }
 
+// making use of https://github.com/ronin-co/client
+// unclear what should be put in the methods
 export function roninAdapter(db: unknown) {
   return (options: BetterAuthOptions) => {
     const {} = createTransform(options)
     return {
       id: "ronin",
       create: async ({ data, model, select }) => {
+        // await create.
         throw new BetterAuthError("Not implemented")
       },
       findOne: async ({ model, select, where }) => {
