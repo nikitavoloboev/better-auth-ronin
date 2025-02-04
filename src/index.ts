@@ -1,19 +1,26 @@
-import { BetterAuthError } from "better-auth"
 import type { Adapter, BetterAuthOptions, Where } from "better-auth/types"
-import { create } from "ronin"
+import { add, get, set, remove } from "ronin"
 
 function operatorToRoninOperator(operator: string) {
   switch (operator) {
     case "starts_with":
-      return "startsWith"
+      return "startingWith"
     case "ends_with":
-      return "endsWith"
+      return "endingWith"
+    case "lte":
+      return "lessOrEqual"
+    case "gte":
+      return "greaterOrEqual"
+    case "gt":
+      return "greaterThan"
+    case "lt":
+      return "lessThan"
     default:
       return operator
   }
 }
 
-function convertWhereClause(model: string, where?: Where[]) {
+function convertWhereClause(where?: Where[]) {
   if (!where) return {}
   if (where.length === 1) {
     const w = where[0]
@@ -25,65 +32,85 @@ function convertWhereClause(model: string, where?: Where[]) {
         w.operator === "eq" || !w.operator
           ? w.value
           : {
-              [operatorToRoninOperator(w.operator)]: w.value,
-            },
+            [operatorToRoninOperator(w.operator)]: w.value,
+          },
     }
   }
   const and = where.filter((w) => w.connector === "AND" || !w.connector)
   const or = where.filter((w) => w.connector === "OR")
-  const andClause = and.map((w) => {
+
+  if (and) {
+    return and.map((w) => {
+      return {
+        [w.field]:
+          w.operator === "eq" || !w.operator
+            ? w.value
+            : {
+              [operatorToRoninOperator(w.operator)]: w.value,
+            },
+      }
+    })
+  }
+
+  return or.map((w) => {
     return {
       [w.field]:
         w.operator === "eq" || !w.operator
           ? w.value
           : {
-              [operatorToRoninOperator(w.operator)]: w.value,
-            },
+            [operatorToRoninOperator(w.operator)]: w.value,
+          },
     }
   })
-  const orClause = or.map((w) => {
-    return {
-      [w.field]: {
-        [w.operator || "eq"]: w.value,
-      },
-    }
-  })
-
-  return {
-    ...(andClause.length ? { AND: andClause } : {}),
-    ...(orClause.length ? { OR: orClause } : {}),
-  }
 }
 
-export function roninAdapter(db: unknown) {
+export function roninAdapter() {
   return (options: BetterAuthOptions) => {
     return {
       id: "ronin",
       create: async ({ data, model }) => {
         // @ts-ignore
-        return await create[model].with(data)
-        // throw new BetterAuthError("Not implemented")
+        return await add[model].with(data)
       },
       findOne: async ({ model, select, where }) => {
-        throw new BetterAuthError("Not implemented")
+        const convertedWhereClause = convertWhereClause(where)
+        const result = await get[model].with(convertedWhereClause)
+        if (Array.isArray(result)) {
+          return result[0] as any
+        }
+        return result as any
       },
       findMany: async ({ limit, model, offset, sortBy, where }) => {
-        throw new BetterAuthError("Not implemented")
+        const convertedWhereClause = convertWhereClause(where)
+        const result = where?.length ? await get[`${model}s`].with(convertedWhereClause) : await get[model]()
+        return result as any
       },
       update: async ({ model, update, where }) => {
-        throw new BetterAuthError("Not implemented")
+        const convertedWhereClause = convertWhereClause(where)
+        const result = await set[model]({
+          with: convertedWhereClause,
+          to: update
+        })
+        return result as any
       },
       delete: async ({ model, where }) => {
-        throw new BetterAuthError("Not implemented")
+        const convertedWhereClause = convertWhereClause(where)
+        await remove[model].with(convertedWhereClause)
       },
       deleteMany: async ({ model, where }) => {
-        throw new BetterAuthError("Not implemented")
+        const convertedWhereClause = convertWhereClause(where)
+        const result = await remove[model].with(convertedWhereClause)
+        return 1
       },
-      updateMany({ model, update, where }) {
-        throw new BetterAuthError("Not implemented")
+      async updateMany({ model, update, where }) {
+        const convertedWhereClause = convertWhereClause(where)
+        const result = await set[model]({
+          with: convertedWhereClause,
+          to: update
+        })
+        return result as any
       },
     } satisfies Adapter
   }
 }
 
-// TODO: untyped until ronin adds types to new client
